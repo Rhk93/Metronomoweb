@@ -1,0 +1,13 @@
+{
+  "name": "Metronomo · Classe chitarra Ignazio",
+  "short_name": "Metronomo",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14121f",
+  "theme_color": "#14121f",
+  "icons": [
+    { "src": "icona.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
