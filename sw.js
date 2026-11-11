@@ -1,5 +1,5 @@
 // Salva l'app nel telefono così funziona anche offline
-const CACHE = 'metronomo-v1';
+const CACHE = 'metronomo-v2';
 const FILE = ['./', 'index.html', 'manifest.json', 'icona.png'];
 
 self.addEventListener('install', e => {
@@ -16,7 +16,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, {cache: 'no-store'})
       .then(r => { const copia = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copia)); return r; })
       .catch(() => caches.match(e.request).then(r => r || caches.match('index.html')))
   );
