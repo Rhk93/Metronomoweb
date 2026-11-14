@@ -81,6 +81,20 @@ header .titoli{min-width:0}
 #svgSolf .sp-luce{stop-color:var(--pLuce)} #svgSolf .sp-base{stop-color:var(--pBase)} #svgSolf .sp-ombra{stop-color:var(--pOmbra)}
 #svgSolf .sp-unghia{stop-color:var(--pUnghia)} #svgSolf .sp-unghia-luce{stop-color:#fff6f2}
 #svgSolf .contoS{font-size:22px;font-weight:800;fill:var(--text)}
+#saltello{display:none;width:100%;max-width:440px}
+#svgSalto{width:100%;height:auto;display:block;overflow:visible}
+#svgSalto .rigo{stroke:var(--muted);stroke-width:1.4;opacity:.55}
+#svgSalto .notaS{fill:var(--text);stroke:var(--text);transform-box:fill-box;transform-origin:center;transition:transform .1s}
+#svgSalto .notaS.forte{fill:var(--accent);stroke:var(--accent)}
+#svgSalto .notaS.muta{opacity:.25}
+#svgSalto .notaS.colpita{transform:scale(1.25)}
+#svgSalto #palla{fill:var(--primary)}
+#svgSalto #ombraPalla{fill:#000;opacity:.25}
+#cambiaVisBox{width:100%;display:flex;justify-content:center;align-items:center;gap:10px;margin-top:-4px}
+#nomeVis{min-width:150px;text-align:center;font-size:.85em;color:var(--text);font-weight:calc(var(--weight) + 200)}
+.cambiaVis.freccia{width:44px;height:38px;padding:0;font-size:1em;border-radius:14px}
+.cambiaVis{background:var(--panel-rgba);color:var(--text);border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:6px 14px;font-size:.8em;font-family:inherit;cursor:pointer}
+.cambiaVis:active{transform:scale(.95)}
 #numerone{display:none;font-size:7em;font-weight:calc(var(--weight) + 400);line-height:1;color:var(--primary)}
 #numerone.forte{color:var(--accent)}
 
@@ -124,6 +138,7 @@ body.compatto #pendolo{transform:scale(.7)}
 body.compatto #cerchio{width:110px;height:110px;font-size:2.8em}
 body.compatto #numerone{font-size:4.5em}
 body.compatto #notaBox{max-width:190px}
+body.compatto #saltello{max-width:330px}
 body.compatto #solfBox{max-width:190px}
 body.compatto #bpm{font-size:calc(3.8em * var(--bpmsize))}
 body.compatto #app{gap:8px}
@@ -134,6 +149,7 @@ body.grande #pendolo{transform:scale(1.35)}
 body.grande #cerchio{width:240px;height:240px;font-size:6em}
 body.grande #numerone{font-size:10em}
 body.grande #notaBox{max-width:400px}
+body.grande #saltello{max-width:640px}
 body.grande #solfBox{max-width:400px}
 body.grande #bpm{font-size:calc(7em * var(--bpmsize))}
 body.grande #start{height:90px;font-size:1.9em}
@@ -204,7 +220,9 @@ input[type=color]{width:44px;height:36px;border:none;background:none;padding:0}
     <div id="numerone">1</div>
     <div id="notaBox"><svg id="svgNota" viewBox="0 0 240 240"></svg></div>
     <div id="solfBox"><svg id="svgSolf" viewBox="0 0 240 262"></svg></div>
+    <div id="saltello"><svg id="svgSalto" viewBox="0 0 340 150"></svg></div>
   </div>
+  <div id="cambiaVisBox"><button id="visPrec" class="cambiaVis freccia" aria-label="Animazione precedente">◀</button><span id="nomeVis">Orologio</span><button id="visSucc" class="cambiaVis freccia" aria-label="Animazione successiva">▶</button></div>
 
   <div class="card" id="cardBattiti">
     <div id="battiti"></div>
@@ -257,7 +275,7 @@ input[type=color]{width:44px;height:36px;border:none;background:none;padding:0}
 <div id="pannello">
   <div id="foglio">
     <header>
-      <h2>Impostazioni <small style="font-size:.6em;opacity:.6;font-weight:400">versione 6</small></h2>
+      <h2>Impostazioni <small style="font-size:.6em;opacity:.6;font-weight:400">versione 8</small></h2>
       <button class="icona" id="chiudiImpostazioni" aria-label="Chiudi">✕</button>
     </header>
     <div id="schede">
@@ -403,10 +421,9 @@ input[type=color]{width:44px;height:36px;border:none;background:none;padding:0}
           <div class="campo"><select id="visuale">
             <option value="nota">Orologio del tempo</option>
             <option value="solfeggio">Solfeggio (mano che batte il tempo)</option>
+            <option value="pallino">Pallino che salta sulle note</option>
             <option value="pendolo">Pendolo</option>
             <option value="cerchio">Cerchio che pulsa</option>
-            <option value="numero">Numero grande del battito</option>
-            <option value="nessuna">Nessuna</option>
           </select></div>
         </div>
         <div class="gruppo">
@@ -521,7 +538,7 @@ const DEFAULT = {
   colori:{...TEMI['Notte']}, panelA:85, raggio:18,
   font:FONT[0][0], scala:100, bpmSize:100, peso:400, maiuscolo:false,
   titolo:'Metronomo', sottotitolo:'Classe chitarra Ignazio',
-  layout:'classico', visuale:'nota', versione:6, arcobaleno:true, coloriBattiti:null, 
+  layout:'classico', visuale:'nota', versione:8, arcobaleno:true, coloriBattiti:null, 
   mostra:{titolo:true,battiti:true,nome:true,tap:true,rapidi:true,stato:true},
   velo:30, sfoc:0, adatta:'cover', posFoto:'center'
 };
@@ -546,7 +563,8 @@ try{S = unisci(DEFAULT, JSON.parse(leggi(CHIAVE)||'null'))}catch(e){S = clona(DE
 let timerSalva=null;
 // Aggiornamento alla versione 5: mostra subito l'orologio del tempo
 let salvatoPrima=null; try{salvatoPrima=JSON.parse(leggi(CHIAVE)||'null')}catch(e){}
-if(salvatoPrima && !(salvatoPrima.versione>=6)){ if(!(salvatoPrima.versione>=5)) S.visuale='nota'; S.versione=6; scrivi(CHIAVE,JSON.stringify(S)); }
+if(['numero','nessuna'].includes(S.visuale)) S.visuale='nota';
+if(salvatoPrima && !(salvatoPrima.versione>=8)){ if(!(salvatoPrima.versione>=5)) S.visuale='nota'; S.versione=8; scrivi(CHIAVE,JSON.stringify(S)); }
 function salva(){clearTimeout(timerSalva);timerSalva=setTimeout(()=>scrivi(CHIAVE,JSON.stringify(S)),250)}
 
 const $ = id => document.getElementById(id);
@@ -734,6 +752,11 @@ function disegna(){
     const dir = (ultimoBattito.i % 2===0) ? -1 : 1;
     $('asta').style.transform = 'rotate('+(dir*28*Math.cos(Math.PI*frac))+'deg)';
   }
+  // Pallino che salta
+  if(S.visuale==='pallino'){
+    if(ultimoBattito.i<0) muoviPalla(0,0);
+    else muoviPalla(ultimoBattito.i, Math.min(1,Math.max(0,(ora-ultimoBattito.t)/ultimoBattito.dur)));
+  }
   // Solfeggio
   if(S.visuale==='solfeggio'){
     if(ultimoBattito.i<0) aggiornaSolfeggio(-1,0);
@@ -759,6 +782,7 @@ function colpoVisivo(n){
   else if(S.trOn) info='→ '+S.trA;
   $('infoAllen').textContent=info;
   if(n.muta) return;
+  if(S.visuale==='pallino' && n.liv>0) colpisciNota(n.i);
   const forte = n.liv===2;
   const c=$('cerchio'), num=$('numerone');
   c.textContent = n.i+1; num.textContent = n.i+1;
@@ -771,6 +795,67 @@ function colpoVisivo(n){
   }
   if(S.vibra && forte && navigator.vibrate){ try{navigator.vibrate(30)}catch(e){} }
 }
+
+/* ================== PALLINO CHE SALTA SULLE NOTE ================== */
+const SALTO={W:340, y0:108, g:9, xs:[], yAtterra:0, rPalla:8, ry:6};
+function disegnaSalto(){
+  const svg=$('svgSalto'); if(!svg) return;
+  svg.innerHTML='';
+  const N=S.battiti, W=SALTO.W, y0=SALTO.y0, g=SALTO.g;
+  for(let k=-2;k<=2;k++) svg.appendChild(elSvg('line',{x1:6,x2:W-6,y1:y0+k*g,y2:y0+k*g,class:'rigo'}));
+  svg.appendChild(elSvg('line',{x1:6,x2:6,y1:y0-2*g,y2:y0+2*g,class:'rigo'}));
+  svg.appendChild(elSvg('line',{x1:W-6,x2:W-6,y1:y0-2*g,y2:y0+2*g,class:'rigo'}));
+  const margine=34, passo=N>1?(W-2*margine)/(N-1):0;
+  SALTO.xs=[]; for(let i=0;i<N;i++) SALTO.xs.push(N>1 ? margine+i*passo : W/2);
+  const rx=Math.max(5,Math.min(9, N>1?passo*0.36:9)), ry=rx*0.72;
+  SALTO.ry=ry; SALTO.rPalla=Math.max(5,Math.min(8,rx*0.9));
+  SALTO.yAtterra=y0-ry-SALTO.rPalla-1;
+  svg.appendChild(elSvg('ellipse',{id:'ombraPalla',cx:SALTO.xs[0],cy:y0-ry+1,rx:SALTO.rPalla,ry:2}));
+  // Semiminime con il gambo in giù, così il pallino atterra sulla testa della nota
+  S.accenti.forEach((liv,i)=>{
+    const x=SALTO.xs[i];
+    const gr=elSvg('g',{class:'notaS'+(liv===2?' forte':'')+(liv===0?' muta':''),id:'notaS'+i});
+    gr.appendChild(elSvg('ellipse',{cx:x,cy:y0,rx:rx,ry:ry,transform:'rotate(-20 '+x+' '+y0+')'}));
+    const xg=x-rx+1.2;
+    gr.appendChild(elSvg('line',{x1:xg,x2:xg,y1:y0+1,y2:y0+3.4*g,'stroke-width':Math.max(1.4,rx*0.2),'stroke-linecap':'round'}));
+    svg.appendChild(gr);
+  });
+  svg.appendChild(elSvg('ellipse',{id:'palla',cx:SALTO.xs[0],cy:SALTO.yAtterra,rx:SALTO.rPalla,ry:SALTO.rPalla}));
+}
+function muoviPalla(i,frac){
+  const N=SALTO.xs.length; if(!N) return;
+  const palla=$('palla'), ombra=$('ombraPalla'); if(!palla) return;
+  i=((i%N)+N)%N;
+  const da=SALTO.xs[i], a=SALTO.xs[(i+1)%N];
+  const altezza = ((i+1)%N===0 && N>1) ? 82 : 62;
+  const x = N===1 ? da : da+(a-da)*frac;
+  const y = SALTO.yAtterra - altezza*4*frac*(1-frac);
+  // si schiaccia un po' quando tocca la nota
+  const vicino=Math.min(frac,1-frac), r=SALTO.rPalla;
+  const sch = vicino<0.07 ? 1-(0.07-vicino)*4 : 1;
+  palla.setAttribute('cx',x); palla.setAttribute('cy',y+r*(1-sch));
+  palla.setAttribute('rx',r*(2-sch)); palla.setAttribute('ry',r*sch);
+  ombra.setAttribute('cx',x); ombra.setAttribute('rx',r*(0.4+0.6*(1-(SALTO.yAtterra-y)/90)));
+}
+function colpisciNota(i){
+  const n=$('notaS'+i); if(!n) return;
+  n.classList.add('colpita'); setTimeout(()=>n.classList.remove('colpita'),110);
+}
+
+/* ================== PULSANTE PER CAMBIARE ANIMAZIONE ================== */
+const GIRO_VISUALI=[['nota','Orologio'],['solfeggio','Solfeggio'],['pallino','Pallino sulle note'],['pendolo','Pendolo'],['cerchio','Cerchio']];
+function aggiornaPulsanteVis(){
+  const v=GIRO_VISUALI.find(x=>x[0]===S.visuale)||GIRO_VISUALI[0];
+  $('nomeVis').textContent=v[1];
+}
+function cambiaVisuale(passo){
+  let i=GIRO_VISUALI.findIndex(x=>x[0]===S.visuale); if(i<0) i=0;
+  S.visuale=GIRO_VISUALI[(i+passo+GIRO_VISUALI.length)%GIRO_VISUALI.length][0];
+  $('visuale').value=S.visuale;
+  applicaAspetto(); riposoNota(); salva();
+}
+$('visPrec').onclick=()=>cambiaVisuale(-1);
+$('visSucc').onclick=()=>cambiaVisuale(1);
 
 /* ================== OROLOGIO DEL TEMPO ================== */
 const NS='http://www.w3.org/2000/svg';
@@ -837,6 +922,7 @@ function disegnaNote(){
   svg.appendChild(OR.num);
   OR.attivo=-2;
   disegnaSolfeggio();
+  disegnaSalto();
 }
 function aggiornaOrologio(i,frac,muta){
   const N=OR.pieni.length; if(!N) return;
@@ -858,7 +944,7 @@ function aggiornaOrologio(i,frac,muta){
     OR.attivo=i;
   }
 }
-function riposoNota(){ OR.attivo=-2; aggiornaOrologio(-1,0,false); aggiornaSolfeggio(-1,0); }
+function riposoNota(){ OR.attivo=-2; aggiornaOrologio(-1,0,false); aggiornaSolfeggio(-1,0); muoviPalla(0,0); }
 
 /* ================== SOLFEGGIO: MANO CHE BATTE IL TEMPO ================== */
 const DIREZ={giu:[0,1],sinistra:[-1,0],destra:[1,0],su:[0,-1]};
@@ -1242,6 +1328,8 @@ function applicaAspetto(){
   $('numerone').style.display = S.visuale==='numero'?'block':'none';
   $('notaBox').style.display = S.visuale==='nota'?'block':'none';
   $('solfBox').style.display = S.visuale==='solfeggio'?'block':'none';
+  $('saltello').style.display = S.visuale==='pallino'?'block':'none';
+  aggiornaPulsanteVis();
   disegnaNote();
   $('visual').style.display = S.visuale==='nessuna'?'none':'flex';
   document.querySelector('meta[name=theme-color]').content=c.bg;
