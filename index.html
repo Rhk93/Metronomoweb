@@ -196,6 +196,8 @@ input[type=color]{width:44px;height:36px;border:none;background:none;padding:0}
 #anteprimaFoto{width:100%;height:140px;border-radius:12px;background:#000 center/cover no-repeat;margin-bottom:10px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.85em}
 .avviso{font-size:.75em;color:var(--muted);margin-top:6px}
 #copyright{width:100%;text-align:center;font-size:.72em;color:var(--muted);margin-top:auto;padding-top:10px}
+#aiutoVoce{font-size:.68em;line-height:1.35;color:var(--muted);text-align:right;white-space:nowrap}
+#aiutoVoce b{color:var(--text)}
 #btnVoce.attivo{background:var(--accent);color:var(--on-accent);animation:ascolto 1.6s ease-in-out infinite}
 @keyframes ascolto{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.35)}50%{box-shadow:0 0 0 7px rgba(255,255,255,0)}}
 #statoVoce{display:none;width:100%;text-align:center;font-size:.8em;color:var(--muted);margin-top:-6px}
@@ -214,7 +216,8 @@ input[type=color]{width:44px;height:36px;border:none;background:none;padding:0}
       <h1 id="titolo">Metronomo</h1>
       <p id="sottotitolo">Classe chitarra Ignazio</p>
     </div>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="aiutoVoce">di' <b>VIA</b> → si avvia<br>di' <b>STOP</b> → si ferma</span>
       <button class="icona" id="btnVoce" aria-label="Comandi vocali">🎤</button>
       <button class="icona" id="apriImpostazioni" aria-label="Impostazioni">⚙</button>
     </div>
@@ -282,7 +285,7 @@ input[type=color]{width:44px;height:36px;border:none;background:none;padding:0}
 <div id="pannello">
   <div id="foglio">
     <header>
-      <h2>Impostazioni <small style="font-size:.6em;opacity:.6;font-weight:400">versione 9</small></h2>
+      <h2>Impostazioni <small style="font-size:.6em;opacity:.6;font-weight:400">versione 10</small></h2>
       <button class="icona" id="chiudiImpostazioni" aria-label="Chiudi">✕</button>
     </header>
     <div id="schede">
@@ -542,10 +545,10 @@ const DEFAULT = {
   flash:false, flashSoloAcc:false, vibra:false, sottofondo:false,
   countIn:false, trOn:false, trDa:80, trA:120, trPasso:4, trOgni:4,
   gapOn:false, gapSuona:2, gapMuto:2, timerMin:0,
-  colori:{...TEMI['Notte']}, panelA:85, raggio:18,
+  colori:{...TEMI['Oceano']}, panelA:85, raggio:18,
   font:FONT[0][0], scala:100, bpmSize:100, peso:400, maiuscolo:false,
   titolo:'Metronomo', sottotitolo:'Classe chitarra Ignazio',
-  layout:'classico', visuale:'nota', versione:8, arcobaleno:true, coloriBattiti:null, 
+  layout:'classico', visuale:'nota', versione:10, arcobaleno:true, coloriBattiti:null, 
   mostra:{titolo:true,battiti:true,nome:true,tap:true,rapidi:true,stato:true},
   velo:30, sfoc:0, adatta:'cover', posFoto:'center'
 };
@@ -571,7 +574,7 @@ let timerSalva=null;
 // Aggiornamento alla versione 5: mostra subito l'orologio del tempo
 let salvatoPrima=null; try{salvatoPrima=JSON.parse(leggi(CHIAVE)||'null')}catch(e){}
 if(['numero','nessuna'].includes(S.visuale)) S.visuale='nota';
-if(salvatoPrima && !(salvatoPrima.versione>=8)){ if(!(salvatoPrima.versione>=5)) S.visuale='nota'; S.versione=8; scrivi(CHIAVE,JSON.stringify(S)); }
+if(salvatoPrima && !(salvatoPrima.versione>=10)){ if(!(salvatoPrima.versione>=5)) S.visuale='nota'; S.colori={...TEMI['Oceano']}; S.versione=10; scrivi(CHIAVE,JSON.stringify(S)); }
 function salva(){clearTimeout(timerSalva);timerSalva=setTimeout(()=>scrivi(CHIAVE,JSON.stringify(S)),250)}
 
 const $ = id => document.getElementById(id);
