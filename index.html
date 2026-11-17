@@ -285,7 +285,7 @@ input[type=color]{width:44px;height:36px;border:none;background:none;padding:0}
 <div id="pannello">
   <div id="foglio">
     <header>
-      <h2>Impostazioni <small style="font-size:.6em;opacity:.6;font-weight:400">versione 10</small></h2>
+      <h2>Impostazioni <small style="font-size:.6em;opacity:.6;font-weight:400">versione 11</small></h2>
       <button class="icona" id="chiudiImpostazioni" aria-label="Chiudi">✕</button>
     </header>
     <div id="schede">
@@ -339,6 +339,12 @@ input[type=color]{width:44px;height:36px;border:none;background:none;padding:0}
         <div class="gruppo">
           <h3>Accenti</h3>
           <div class="interr">Accento sul primo battito<input type="checkbox" id="accPrimo"></div>
+          <div class="campo"><label>Accento ogni…</label>
+            <div class="griglia2" style="grid-template-columns:1fr 1fr 1fr">
+              <button class="btn mini" id="ogni1">Semiminima</button>
+              <button class="btn mini" id="ogni2">Minima</button>
+              <button class="btn mini" id="ogni4">Semibreve</button>
+            </div></div>
           <div class="griglia2">
             <button class="btn mini" id="accTutti">Tutti normali</button>
             <button class="btn mini" id="accReset">Ripristina</button>
@@ -498,7 +504,7 @@ input[type=color]{width:44px;height:36px;border:none;background:none;padding:0}
 const SUONI = {
   click:'Click classico', meccanico:'Metronomo meccanico', legno:'Legnetto (woodblock)', clave:'Claves',
   beep:'Beep elettronico', digitale:'Digitale', campanaccio:'Campanaccio', triangolo:'Triangolo',
-  hihat:'Charleston (hi-hat)', rullante:'Rullante', cassa:'Cassa', bongo:'Bongo', rimshot:'Rimshot', goccia:'Goccia'
+  hihat:'Charleston (hi-hat)', rullante:'Rullante', cassa:'Cassa', bongo:'Bongo', rimshot:'Rimshot', goccia:'Goccia', voce:'Voce che conta (1, 2, 3, 4…)'
 };
 const SUDDIVISIONI = [
   [1,'Nessuna (solo battiti)'],[2,'Crome (2 per battito)'],[3,'Terzine (3)'],[4,'Semicrome (4)'],
@@ -548,7 +554,7 @@ const DEFAULT = {
   colori:{...TEMI['Oceano']}, panelA:85, raggio:18,
   font:FONT[0][0], scala:100, bpmSize:100, peso:400, maiuscolo:false,
   titolo:'Metronomo', sottotitolo:'Classe chitarra Ignazio',
-  layout:'classico', visuale:'nota', versione:10, arcobaleno:true, coloriBattiti:null, 
+  layout:'classico', visuale:'nota', versione:10, arcobaleno:true, coloriBattiti:null, ogniAcc:0, 
   mostra:{titolo:true,battiti:true,nome:true,tap:true,rapidi:true,stato:true},
   velo:30, sfoc:0, adatta:'cover', posFoto:'center'
 };
@@ -635,8 +641,58 @@ function rumore(t,v,dec,filtro,freq,q){
   s.connect(f); f.connect(g); g.connect(master);
   s.start(t, Math.random()*0.5); s.stop(t+dec+0.05);
 }
-function suona(nome,t,vol,tono){
+/* ---- Voce che conta: numeri registrati (app) o voce del browser (sito) ---- */
+const PAROLE_NUMERI=['uno','due','tre','quattro','cinque','sei','sette','otto','nove','dieci','undici','dodici','tredici','quattordici','quindici','sedici','e'];
+const VOCE_NUM=[]; let numeriChiesti=false, voceIt=null;
+function preparaNumeri(){
+  if(numeriChiesti) return; numeriChiesti=true;
+  if(window.AndroidVoce && window.AndroidVoce.preparaNumeri){ try{ window.AndroidVoce.preparaNumeri(); }catch(e){} }
+  else if(window.speechSynthesis){
+    const scegli=()=>{ const v=speechSynthesis.getVoices(); voceIt=v.find(x=>/^it/i.test(x.lang))||null; };
+    scegli(); speechSynthesis.onvoiceschanged=scegli;
+  }
+}
+// L'app Android manda ogni numero registrato: lo preparo togliendo il silenzio iniziale
+window.appNumero=function(i,b64){
+  preparaAudio();
+  try{
+    const bin=atob(b64), buf=new Uint8Array(bin.length); for(let k=0;k<bin.length;k++) buf[k]=bin.charCodeAt(k);
+    ctx.decodeAudioData(buf.buffer, ab=>{
+      const d=ab.getChannelData(0); let a=0, z=d.length-1;
+      while(a<d.length && Math.abs(d[a])<0.02) a++;
+      while(z>a && Math.abs(d[z])<0.01) z--;
+      a=Math.max(0,a-Math.round(ab.sampleRate*0.004));
+      const len=Math.max(1,z-a+1), out=ctx.createBuffer(1,len,ab.sampleRate);
+      out.getChannelData(0).set(d.subarray(a,a+len));
+      VOCE_NUM[i]=out;
+    }, ()=>{});
+  }catch(e){}
+};
+function suonaVoce(idx,t,vol,tono){
+  preparaNumeri();
+  const buf=VOCE_NUM[idx];
+  if(buf){
+    const src=ctx.createBufferSource(), g=ctx.createGain();
+    src.buffer=buf; src.playbackRate.value=Math.pow(2,(tono||0)/12);
+    g.gain.value=Math.min(2.5,(vol/100)*1.6);
+    src.connect(g); g.connect(master); src.start(t); return;
+  }
+  if(window.speechSynthesis && !window.AndroidVoce){
+    const parola=PAROLE_NUMERI[idx]||'';
+    const ritardo=Math.max(0,(t-ctx.currentTime)*1000-70);
+    setTimeout(()=>{ try{
+      speechSynthesis.cancel();
+      const u=new SpeechSynthesisUtterance(parola); u.lang='it-IT'; if(voceIt) u.voice=voceIt;
+      u.rate=1.6; u.volume=Math.min(1,vol/100); u.pitch=Math.max(.1,Math.min(2,1+(tono||0)/24));
+      speechSynthesis.speak(u);
+    }catch(e){} }, ritardo);
+    return;
+  }
+  suona('click',t,vol,tono);   // la voce non è ancora pronta: intanto un click
+}
+function suona(nome,t,vol,tono,idx){
   if(vol<=0) return;
+  if(nome==='voce'){ suonaVoce(idx===undefined?0:idx,t,vol,tono); return; }
   const v=vol/100, p=Math.pow(2,(tono||0)/12);
   switch(nome){
     case 'click': osc('square',1000*p,t,v*.35,.025); osc('sine',2000*p,t,v*.3,.015); break;
@@ -682,11 +738,11 @@ function programma(){
   const muta = battutaMuta();
   if(!muta){
     if(iSudd===0){
-      if(inAttacco) suona(S.voci.battito.suono, prossimo, S.voci.battito.vol, iBattito===0?S.voci.accento.tono:S.voci.battito.tono);
-      else if(livello===2) suona(S.voci.accento.suono, prossimo, S.voci.accento.vol, S.voci.accento.tono);
-      else if(livello===1) suona(S.voci.battito.suono, prossimo, S.voci.battito.vol, S.voci.battito.tono);
+      if(inAttacco) suona(S.voci.battito.suono, prossimo, S.voci.battito.vol, iBattito===0?S.voci.accento.tono:S.voci.battito.tono, iBattito);
+      else if(livello===2) suona(S.voci.accento.suono, prossimo, S.voci.accento.vol, S.voci.accento.tono, iBattito);
+      else if(livello===1) suona(S.voci.battito.suono, prossimo, S.voci.battito.vol, S.voci.battito.tono, iBattito);
     } else if(livello>0 && !inAttacco){
-      suona(S.voci.sudd.suono, prossimo, S.voci.sudd.vol, S.voci.sudd.tono);
+      suona(S.voci.sudd.suono, prossimo, S.voci.sudd.vol, S.voci.sudd.tono, 16);
     }
   }
   if(iSudd===0) coda.push({t:prossimo, i:iBattito, liv:inAttacco?1:livello, muta, dur:60/S.bpm, attacco:inAttacco, battuta:nBattute});
@@ -1137,7 +1193,7 @@ function disegnaBattiti(){
   const box=$('battiti'); box.innerHTML='';
   S.accenti.forEach((liv,i)=>{
     const d=document.createElement('div'); d.className='batt l'+liv; d.textContent=i+1;
-    d.onclick=()=>{ S.accenti[i] = liv===2?1:(liv===1?0:2); disegnaBattiti(); salva(); };
+    d.onclick=()=>{ S.accenti[i] = liv===2?1:(liv===1?0:2); if(S.ogniAcc){ S.ogniAcc=0; evidenziaOgni(); } disegnaBattiti(); salva(); };
     box.appendChild(d);
   });
   disegnaNote();
@@ -1148,6 +1204,7 @@ function impostaTempo(b,n){
   S.battiti=limita(b,1,16); if(n) S.nota=n;
   adattaAccenti();
   if(S.battiti!==vecchio){ S.accenti = S.accenti.map((x,i)=> i===0 ? (S.accPrimo?2:1) : (i<vecchio?x:1)); }
+  applicaOgni();
   if(iBattito>=S.battiti) iBattito=0;
   aggiornaControlli(); disegnaBattiti(); salva();
 }
@@ -1211,6 +1268,7 @@ TEMPI_COMUNI.forEach(([b,n])=>{
     impostaTempo(b,n);
     // Accento sul primo battito; nei tempi composti (6/8, 9/8, 12/8) anche ogni 3 crome
     S.accenti=S.accenti.map((x,i)=> (i===0 && S.accPrimo) || (n===8 && b%3===0 && b>3 && i%3===0) ? 2 : 1);
+    applicaOgni();
     disegnaBattiti(); salva();
   };
   $('tempiComuni').appendChild(d);
@@ -1305,12 +1363,17 @@ document.querySelectorAll('.mostra').forEach(c=>c.addEventListener('change',()=>
 [$('qBattiti'),$('rBattiti')].forEach(s=>s.onchange=e=>impostaTempo(+e.target.value));
 [$('qNota'),$('rNota')].forEach(s=>s.onchange=e=>impostaTempo(S.battiti,+e.target.value));
 [$('qSudd'),$('rSudd')].forEach(s=>s.onchange=e=>{ S.sudd=+e.target.value; iSudd=0; aggiornaControlli(); disegnaNote(); salva(); });
-$('accTutti').onclick=()=>{ S.accenti=S.accenti.map(()=>1); disegnaBattiti(); salva(); };
-$('accReset').onclick=()=>{ S.accenti=S.accenti.map((x,i)=> i===0&&S.accPrimo?2:1); disegnaBattiti(); salva(); };
+// Accento ogni semiminima (ogni battito), minima (ogni 2) o semibreve (ogni 4)
+function applicaOgni(){ if(S.ogniAcc>0) S.accenti=S.accenti.map((x,i)=> i%S.ogniAcc===0?2:1); }
+function evidenziaOgni(){ [1,2,4].forEach(n=>$('ogni'+n).classList.toggle('pieno',S.ogniAcc===n)); }
+[1,2,4].forEach(n=>$('ogni'+n).onclick=()=>{ S.ogniAcc = S.ogniAcc===n ? 0 : n; if(S.ogniAcc) applicaOgni(); else S.accenti=S.accenti.map((x,i)=> i===0&&S.accPrimo?2:1); evidenziaOgni(); disegnaBattiti(); salva(); });
+$('accTutti').onclick=()=>{ S.ogniAcc=0; evidenziaOgni(); S.accenti=S.accenti.map(()=>1); disegnaBattiti(); salva(); };
+$('accReset').onclick=()=>{ S.ogniAcc=0; evidenziaOgni(); S.accenti=S.accenti.map((x,i)=> i===0&&S.accPrimo?2:1); disegnaBattiti(); salva(); };
 $('resetTutto').onclick=()=>{
   if(!confirm('Ripristinare tutte le impostazioni? La foto e i preferiti restano.')) return;
   if(inMarcia) ferma();
-  S=clona(DEFAULT); salva(); disegnaColoriBattiti(); aggiornaControlli(); applicaAspetto(); applicaFoto(); disegnaPalette(); disegnaBattiti(); mostraBpm();
+  S=clona(DEFAULT); salva(); disegnaColoriBattiti(); if(Object.values(S.voci).some(v=>v.suono==='voce')) preparaNumeri();
+aggiornaControlli(); evidenziaOgni(); applicaAspetto(); applicaFoto(); disegnaPalette(); disegnaBattiti(); mostraBpm();
   toast('Impostazioni ripristinate');
 };
 
